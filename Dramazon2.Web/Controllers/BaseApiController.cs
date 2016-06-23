@@ -33,7 +33,7 @@ namespace Dramazon2.Web.Controllers
             {
                 if (_modelFactory == null)
                 {
-                    _modelFactory = new ModelFactory(Request);
+                    _modelFactory = new ModelFactory(Request, _repo);
                 }
                 return _modelFactory;
             }

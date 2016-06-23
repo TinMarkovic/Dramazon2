@@ -10,33 +10,33 @@ using System.Web.Http;
 
 namespace Dramazon2.Web.Controllers
 {
-    public class ProductsController : BaseApiController
+    public class CustomersController : BaseApiController
     {
-        public ProductsController(IDramazon2Repository repo) : base(repo)
+        public CustomersController(IDramazon2Repository repo) : base(repo)
         {
         }
 
+        //[HttpGet]
+        //public IEnumerable<CustomerModel> Get()
+        //{
+        //    IQueryable<Customer> query;
+
+        //    query = TheRepository.GetAllCustomers();
+
+        //    var results = query.ToList().Select(s => TheModelFactory.Create(s));
+
+        //    return results;
+        //}
+
         [HttpGet]
-        public IEnumerable<ProductModel> Get()
-        {
-            IQueryable<Product> query;
-
-            query = TheRepository.GetAllProducts();
-
-            var results = query.ToList().Select(s => TheModelFactory.Create(s));
-
-            return results;
-        }
-
-        [HttpGet]
-        public HttpResponseMessage GetProduct(int id)
+        public HttpResponseMessage GetCustomer(int id)
         {
             try
             {
-                var product = TheRepository.GetProduct(id);
-                if (product != null)
+                var customer = TheRepository.GetProduct(id);
+                if (customer != null)
                 {
-                    return Request.CreateResponse(HttpStatusCode.OK, TheModelFactory.Create(product));
+                    return Request.CreateResponse(HttpStatusCode.OK, TheModelFactory.Create(customer));
                 }
                 else
                 {
@@ -51,11 +51,11 @@ namespace Dramazon2.Web.Controllers
         }
 
         [HttpPost]
-        public HttpResponseMessage Post([FromBody] ProductModel productModel)
+        public HttpResponseMessage Post([FromBody] ProductModel customerModel)
         {
             try
             {
-                var entity = TheModelFactory.Parse(productModel);
+                var entity = TheModelFactory.Parse(customerModel);
 
                 if (entity == null) Request.CreateErrorResponse(HttpStatusCode.BadRequest, "Could not read data from body");
 
@@ -77,29 +77,29 @@ namespace Dramazon2.Web.Controllers
         [HttpPatch]
         [HttpPut]
         [Route("")]
-        public HttpResponseMessage Put(int id, [FromBody] ProductModel productModel)
+        public HttpResponseMessage Put(int id, [FromBody] ProductModel customerModel)
         {
             try
             {
 
-                var updatedProduct = TheModelFactory.Parse(productModel);
+                var updatedCustomer = TheModelFactory.Parse(customerModel);
 
-                if (updatedProduct == null) Request.CreateErrorResponse(HttpStatusCode.BadRequest, "Could not read data from body");
+                if (updatedCustomer == null) Request.CreateErrorResponse(HttpStatusCode.BadRequest, "Could not read data from body");
 
-                var originalProduct = TheRepository.GetProduct(id);
+                var originalCustomer = TheRepository.GetCustomerById(id);
 
-                if (originalProduct == null || originalProduct.Id != id)
+                if (originalCustomer == null || originalCustomer.Id != id)
                 {
                     return Request.CreateResponse(HttpStatusCode.NotModified, "Course is not found");
                 }
                 else
                 {
-                    updatedProduct.Id = id;
+                    updatedCustomer.Id = id;
                 }
 
-                if (TheRepository.Update(originalProduct, updatedProduct) && TheRepository.SaveAll())
+                if (TheRepository.Update(originalCustomer, updatedCustomer) && TheRepository.SaveAll())
                 {
-                    return Request.CreateResponse(HttpStatusCode.OK, TheModelFactory.Create(updatedProduct));
+                    return Request.CreateResponse(HttpStatusCode.OK, TheModelFactory.Create(updatedCustomer));
                 }
                 else
                 {
@@ -118,14 +118,14 @@ namespace Dramazon2.Web.Controllers
         {
             try
             {
-                var product = TheRepository.GetProduct(id);
+                var customer = TheRepository.GetCustomerById(id);
 
-                if (product == null)
+                if (customer == null)
                 {
                     return Request.CreateResponse(HttpStatusCode.NotFound);
                 }
 
-                if (TheRepository.DeleteProduct(id) && TheRepository.SaveAll())
+                if (TheRepository.DeleteCustomer(id) && TheRepository.SaveAll())
                 {
                     return Request.CreateResponse(HttpStatusCode.OK);
                 }
@@ -140,18 +140,5 @@ namespace Dramazon2.Web.Controllers
                 return Request.CreateErrorResponse(HttpStatusCode.BadRequest, ex.Message);
             }
         }
-        //public List<Product> Get()
-        //{
-        //    IDramazon2Repository repository = new Dramazon2Repository(new Dramazon2Context());
-
-        //    return repository.GetAllProducts().ToList();
-        //}
-
-        //public Product GetProduct(int id)
-        //{
-        //    IDramazon2Repository repository = new Dramazon2Repository(new Dramazon2Context());
-
-        //    return repository.GetProduct(id);
-        //}
     }
 }

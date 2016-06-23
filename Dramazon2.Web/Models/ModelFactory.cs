@@ -1,4 +1,5 @@
-﻿using Dramazon2.Data.Models;
+﻿using Dramazon2.Data;
+using Dramazon2.Data.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,10 +11,12 @@ namespace Dramazon2.Web.Models
     public class ModelFactory
     {
         private System.Web.Http.Routing.UrlHelper _UrlHelper;
+        private IDramazon2Repository _repo;
 
-        public ModelFactory(HttpRequestMessage request)
+        public ModelFactory(HttpRequestMessage request, IDramazon2Repository repo)
         {
             _UrlHelper = new System.Web.Http.Routing.UrlHelper(request);
+            _repo = repo;
         }
 
         public ProductModel Create(Product product)
@@ -52,5 +55,28 @@ namespace Dramazon2.Web.Models
                 Name = tag.Name
             };
         }
+
+        public Product Parse(ProductModel model)
+        {
+            try
+            {
+                var product = new Product()
+                {
+                    Title = model.Title,
+                    Description = model.Description,
+                    Image = model.Image,
+                    Price = model.Price,
+                    Creator = _repo.GetCustomerById(model.Creator.Id)
+                };
+
+                return product;
+            }
+            catch (Exception)
+            {
+
+                return null;
+            }
+        }
+
     }
 }

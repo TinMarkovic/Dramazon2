@@ -24,6 +24,12 @@ namespace Dramazon2.Web
             routeTemplate: "api/products/{id}",
             defaults: new { controller = "products", id = RouteParameter.Optional }
             );
+
+            config.Routes.MapHttpRoute(
+                name: "Customers",
+                routeTemplate: "api/customers/{userName}",
+                defaults: new { controller = "customers", id = RouteParameter.Optional, username = RouteParameter.Optional }
+                );
         }
     }
 }
