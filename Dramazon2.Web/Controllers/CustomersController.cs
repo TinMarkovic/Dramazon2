@@ -1,8 +1,10 @@
 ﻿using Dramazon2.Data;
 using Dramazon2.Data.Models;
+using Dramazon2.Web.Filters;
 using Dramazon2.Web.Models;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -15,25 +17,28 @@ namespace Dramazon2.Web.Controllers
         public CustomersController(IDramazon2Repository repo) : base(repo)
         {
         }
-
-        //[HttpGet]
-        //public IEnumerable<CustomerModel> Get()
-        //{
-        //    IQueryable<Customer> query;
-
-        //    query = TheRepository.GetAllCustomers();
-
-        //    var results = query.ToList().Select(s => TheModelFactory.Create(s));
-
-        //    return results;
-        //}
-
+        
         [HttpGet]
-        public HttpResponseMessage GetCustomer(int id)
+        [Route("~/api/customers")]
+        public IEnumerable<CustomerModel> Get()
+        {
+            IQueryable<Customer> query;
+
+            query = TheRepository.GetAllCustomers();
+
+            var results = query.ToList().Select(s => TheModelFactory.Create(s));
+
+            return results;
+        }
+
+        [DramazonAuthorizeAttribute]
+        [HttpGet]
+        [Route("~/api/customers/{username}")]
+        public HttpResponseMessage GetCustomer(string username)
         {
             try
             {
-                var customer = TheRepository.GetProduct(id);
+                var customer = TheRepository.GetCustomerByUsername(username);
                 if (customer != null)
                 {
                     return Request.CreateResponse(HttpStatusCode.OK, TheModelFactory.Create(customer));
@@ -51,17 +56,22 @@ namespace Dramazon2.Web.Controllers
         }
 
         [HttpPost]
-        public HttpResponseMessage Post([FromBody] ProductModel customerModel)
+        [Route("~/api/customers")]
+        public HttpResponseMessage Post([FromBody] Customer customer)
         {
             try
             {
-                var entity = TheModelFactory.Parse(customerModel);
+                Trace.TraceWarning("TinTest 1 " + customer);
+                if (customer == null) Request.CreateErrorResponse(HttpStatusCode.BadRequest, "Could not read data from body");
+                
+                // Validation
+                var duplicateCostumer = TheRepository.GetCustomerByUsername(customer.Username);
+                duplicateCostumer = TheRepository.GetCustomerByEmail(customer.Email);
+                if (duplicateCostumer != null) return Request.CreateErrorResponse(HttpStatusCode.BadRequest, "Email/Username already exists.");
 
-                if (entity == null) Request.CreateErrorResponse(HttpStatusCode.BadRequest, "Could not read data from body");
-
-                if (TheRepository.Insert(entity) && TheRepository.SaveAll())
+                if (TheRepository.Insert(customer) && TheRepository.SaveAll())
                 {
-                    return Request.CreateResponse(HttpStatusCode.Created, TheModelFactory.Create(entity));
+                    return Request.CreateResponse(HttpStatusCode.Created, TheModelFactory.Create(customer));
                 }
                 else
                 {
@@ -72,12 +82,13 @@ namespace Dramazon2.Web.Controllers
             {
                 return Request.CreateErrorResponse(HttpStatusCode.BadRequest, ex);
             }
+            //throw new NotImplementedException();
         }
 
+        [DramazonAuthorizeAttribute]
         [HttpPatch]
         [HttpPut]
-        [Route("")]
-        public HttpResponseMessage Put(int id, [FromBody] ProductModel customerModel)
+        public HttpResponseMessage Put(string username, [FromBody] CustomerModel customerModel)
         {
             try
             {
@@ -86,15 +97,17 @@ namespace Dramazon2.Web.Controllers
 
                 if (updatedCustomer == null) Request.CreateErrorResponse(HttpStatusCode.BadRequest, "Could not read data from body");
 
-                var originalCustomer = TheRepository.GetCustomerById(id);
+                var originalCustomer = TheRepository.GetCustomerByUsername(username);
 
-                if (originalCustomer == null || originalCustomer.Id != id)
+                if (originalCustomer == null || originalCustomer.Username != username)
                 {
-                    return Request.CreateResponse(HttpStatusCode.NotModified, "Course is not found");
+                    return Request.CreateResponse(HttpStatusCode.NotModified, "Customer is not found");
                 }
                 else
                 {
-                    updatedCustomer.Id = id;
+                    updatedCustomer.Id = originalCustomer.Id;
+                    updatedCustomer.Password = originalCustomer.Password;
+                    updatedCustomer.Email = originalCustomer.Email;
                 }
 
                 if (TheRepository.Update(originalCustomer, updatedCustomer) && TheRepository.SaveAll())
@@ -111,21 +124,23 @@ namespace Dramazon2.Web.Controllers
             {
                 return Request.CreateErrorResponse(HttpStatusCode.BadRequest, ex);
             }
+            throw new NotImplementedException();
         }
 
+        [DramazonAuthorizeAttribute]
         [HttpDelete]
-        public HttpResponseMessage Delete(int id)
+        public HttpResponseMessage Delete(string username)
         {
             try
             {
-                var customer = TheRepository.GetCustomerById(id);
+                var customer = TheRepository.GetCustomerByUsername(username);
 
                 if (customer == null)
                 {
                     return Request.CreateResponse(HttpStatusCode.NotFound);
                 }
 
-                if (TheRepository.DeleteCustomer(id) && TheRepository.SaveAll())
+                if (TheRepository.DeleteCustomer(customer.Id) && TheRepository.SaveAll())
                 {
                     return Request.CreateResponse(HttpStatusCode.OK);
                 }
@@ -139,6 +154,156 @@ namespace Dramazon2.Web.Controllers
             {
                 return Request.CreateErrorResponse(HttpStatusCode.BadRequest, ex.Message);
             }
+        }
+
+        [DramazonAuthorizeAttribute]
+        [HttpPost]
+        [Route("~/api/customers/{username}/product/{productId}")]
+        public HttpResponseMessage AddToCart(string username, int productId)
+        {
+            try
+            {
+                Customer customer = TheRepository.GetCustomerByUsername(username);
+                Product product = TheRepository.GetProduct(productId);
+
+                TheRepository.AddProductToCart(product, customer);
+                TheRepository.SaveAll();
+
+                return Request.CreateResponse(HttpStatusCode.Accepted);
+            }
+            catch (Exception ex)
+            {
+                return Request.CreateErrorResponse(HttpStatusCode.BadRequest, ex);
+            }
+            //throw new NotImplementedException();
+        }
+
+        [DramazonAuthorizeAttribute]
+        [HttpDelete]
+        [Route("~/api/customers/{username}/product/{productId}")]
+        public HttpResponseMessage RemoveFromCart(string username, int productId)
+        {
+            try
+            {
+                Customer customer = TheRepository.GetCustomerByUsername(username);
+                Product product = TheRepository.GetProduct(productId);
+
+                TheRepository.RemoveProductFromCart(product, customer);
+                TheRepository.SaveAll();
+
+                return Request.CreateResponse(HttpStatusCode.Accepted);
+            }
+            catch (Exception ex)
+            {
+                return Request.CreateErrorResponse(HttpStatusCode.BadRequest, ex);
+            }
+            //throw new NotImplementedException();
+        }
+
+        [DramazonAuthorizeAttribute]
+        [HttpPost]
+        [Route("~/api/customers/{username}/checkout")]
+        public HttpResponseMessage Checkout(string username)
+        {
+            try
+            {
+                Customer customer = TheRepository.GetCustomerByUsername(username);
+                Purchase purchase = TheRepository.PurchaseCart(customer);
+                TheRepository.SaveAll();
+
+                return Request.CreateResponse(HttpStatusCode.Accepted, purchase);
+            }
+            catch (Exception ex)
+            {
+                return Request.CreateErrorResponse(HttpStatusCode.BadRequest, ex);
+            }
+            //throw new NotImplementedException();
+        }
+
+        [DramazonAuthorizeAttribute]
+        [HttpGet]
+        [Route("~/api/customers/{username}/product/{productId}/rate")]
+        public HttpResponseMessage GetRating(string username, int productId)
+        {
+            try
+            {
+                Customer customer = TheRepository.GetCustomerByUsername(username);
+                Product product = TheRepository.GetProduct(productId);
+
+                Rating previousRating = TheRepository.Get(customer.Id, product.Id);
+                if (previousRating == null)
+                    return Request.CreateResponse(HttpStatusCode.OK);
+                return Request.CreateResponse(HttpStatusCode.OK, previousRating);
+
+            }
+            catch (Exception ex)
+            {
+                return Request.CreateErrorResponse(HttpStatusCode.BadRequest, ex);
+            }
+            //throw new NotImplementedException();
+        }
+
+        [DramazonAuthorizeAttribute]
+        [HttpGet]
+        [Route("~/api/customers/{username}/product/rates")]
+        public HttpResponseMessage GetRatings(string username)
+        {
+            try
+            {
+                Customer customer = TheRepository.GetCustomerByUsername(username);
+                var ratings = TheRepository.GetAllRatingsByCustomer(customer.Id);
+
+                List<int> ratedIDs = new List<int>();
+
+                foreach(Rating rating in ratings)
+                {
+                    ratedIDs.Add(rating.Product.Id);
+                }
+
+                return Request.CreateResponse(HttpStatusCode.OK, ratedIDs);
+
+            }
+            catch (Exception ex)
+            {
+                return Request.CreateErrorResponse(HttpStatusCode.BadRequest, ex);
+            }
+            //throw new NotImplementedException();
+        }
+
+        [DramazonAuthorizeAttribute]
+        [HttpPost]
+        [Route("~/api/customers/{username}/product/{productId}/rate/{rating}")]
+        public HttpResponseMessage RateProduct(string username, int productId, int rating)
+        {
+            try
+            {
+                Customer customer = TheRepository.GetCustomerByUsername(username);
+                Product product = TheRepository.GetProduct(productId);
+
+                Rating previousRating = TheRepository.Get(customer.Id, product.Id);
+                if (previousRating != null)
+                    return Request.CreateErrorResponse(HttpStatusCode.NotModified, "Already rated: " + previousRating.Value);
+
+                if (rating > 5) rating = 5;
+                if (rating < 1) rating = 1;
+
+                Rating ratingObj = new Rating()
+                {
+                    Customer = customer,
+                    Product = product,
+                    Value = rating
+                };
+
+                TheRepository.Insert(ratingObj);
+                TheRepository.SaveAll();
+
+                return Request.CreateResponse(HttpStatusCode.Accepted);
+            }
+            catch (Exception ex)
+            {
+                return Request.CreateErrorResponse(HttpStatusCode.BadRequest, ex);
+            }
+            //throw new NotImplementedException();
         }
     }
 }

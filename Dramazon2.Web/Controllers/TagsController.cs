@@ -10,18 +10,20 @@ using System.Web.Http;
 
 namespace Dramazon2.Web.Controllers
 {
-    public class ProductsController : BaseApiController
+    [RoutePrefix("api/tags")]
+    public class TagsController : BaseApiController
     {
-        public ProductsController(IDramazon2Repository repo) : base(repo)
+        public TagsController(IDramazon2Repository repo) : base(repo)
         {
         }
 
+        [Route("")]
         [HttpGet]
-        public IEnumerable<ProductModel> Get()
+        public IEnumerable<TagModel> Get()
         {
-            IQueryable<Product> query;
+            IQueryable<Tag> query;
 
-            query = TheRepository.GetAllProducts();
+            query = TheRepository.GetAllTags();
 
             var results = query.ToList().Select(s => TheModelFactory.Create(s));
 
@@ -29,15 +31,15 @@ namespace Dramazon2.Web.Controllers
         }
 
         [HttpGet]
-        [Route("~/api/products/{id}")]
-        public HttpResponseMessage GetProduct(int id)
+        [Route("{id:int}")]
+        public HttpResponseMessage GetTag(int id)
         {
             try
             {
-                var product = TheRepository.GetProduct(id);
-                if (product != null)
+                var tag = TheRepository.GetTag(id);
+                if (tag != null)
                 {
-                    return Request.CreateResponse(HttpStatusCode.OK, TheModelFactory.Create(product));
+                    return Request.CreateResponse(HttpStatusCode.OK, TheModelFactory.Create(tag));
                 }
                 else
                 {
@@ -51,12 +53,36 @@ namespace Dramazon2.Web.Controllers
             }
         }
 
-        [HttpPost]
-        public HttpResponseMessage Post(ProductModel productModel)
+        [HttpGet]
+        [Route("{name}")]
+        public HttpResponseMessage GetTag(string name)
         {
             try
             {
-                var entity = TheModelFactory.Parse(productModel);
+                var tag = TheRepository.GetTagByName(name);
+                if (tag != null)
+                {
+                    return Request.CreateResponse(HttpStatusCode.OK, TheModelFactory.Create(tag));
+                }
+                else
+                {
+                    return Request.CreateResponse(HttpStatusCode.NotFound);
+                }
+
+            }
+            catch (Exception ex)
+            {
+                return Request.CreateErrorResponse(HttpStatusCode.BadRequest, ex);
+            }
+        }
+
+        [Route("")]
+        [HttpPost]
+        public HttpResponseMessage Post([FromBody] Tag tag)
+        {
+            try
+            {
+                var entity = tag;
 
                 if (entity == null) Request.CreateErrorResponse(HttpStatusCode.BadRequest, "Could not read data from body");
 
@@ -77,30 +103,30 @@ namespace Dramazon2.Web.Controllers
 
         [HttpPatch]
         [HttpPut]
-        [Route("~/api/products/{id}")]
-        public HttpResponseMessage Put(int id, [FromBody] ProductModel productModel)
+        [Route("{id:int}")]
+        public HttpResponseMessage Put(int id, [FromBody] Tag tagModel)
         {
             try
             {
 
-                var updatedProduct = TheModelFactory.Parse(productModel);
+                var updatedTag = tagModel;
 
-                if (updatedProduct == null) Request.CreateErrorResponse(HttpStatusCode.BadRequest, "Could not read data from body");
+                if (updatedTag == null) Request.CreateErrorResponse(HttpStatusCode.BadRequest, "Could not read data from body");
 
-                var originalProduct = TheRepository.GetProduct(id);
+                var originalTag = TheRepository.GetTag(id);
 
-                if (originalProduct == null || originalProduct.Id != id)
+                if (originalTag == null || originalTag.Id != id)
                 {
-                    return Request.CreateResponse(HttpStatusCode.NotModified, "Product is not found");
+                    return Request.CreateResponse(HttpStatusCode.NotModified, "Tag is not found");
                 }
                 else
                 {
-                    updatedProduct.Id = id;
+                    updatedTag.Id = id;
                 }
 
-                if (TheRepository.Update(originalProduct, updatedProduct) && TheRepository.SaveAll())
+                if (TheRepository.Update(originalTag, updatedTag) && TheRepository.SaveAll())
                 {
-                    return Request.CreateResponse(HttpStatusCode.OK, TheModelFactory.Create(updatedProduct));
+                    return Request.CreateResponse(HttpStatusCode.OK, TheModelFactory.Create(updatedTag));
                 }
                 else
                 {
@@ -115,20 +141,19 @@ namespace Dramazon2.Web.Controllers
         }
 
         [HttpDelete]
-        [Route("~/api/products/{id}")]
+        [Route("{id:int}")]
         public HttpResponseMessage Delete(int id)
         {
-
             try
             {
-                var product = TheRepository.GetProduct(id);
+                var tag = TheRepository.GetTag(id);
 
-                if (product == null)
+                if (tag == null)
                 {
                     return Request.CreateResponse(HttpStatusCode.NotFound);
                 }
 
-                if (TheRepository.DeleteProduct(id) && TheRepository.SaveAll())
+                if (TheRepository.DeleteTag(id) && TheRepository.SaveAll())
                 {
                     return Request.CreateResponse(HttpStatusCode.OK);
                 }
@@ -142,20 +167,6 @@ namespace Dramazon2.Web.Controllers
             {
                 return Request.CreateErrorResponse(HttpStatusCode.BadRequest, ex.Message);
             }
-        }
-
-        [Route("~/api/tags/{tagId:int}/products")]
-        [Route("~/api/products/tags/{tagId:int}")]
-        [HttpGet]
-        public IEnumerable<ProductModel> GetProductsByTag(int tagId)
-        {
-            IQueryable<Product> query;
-
-            query = TheRepository.GetProductsByTag(tagId);
-
-            var results = query.ToList().Select(s => TheModelFactory.Create(s));
-
-            return results;
         }
     }
 }

@@ -31,39 +31,40 @@ namespace Dramazon2.Data
             return false;
         }
 
-        public bool PurchaseCart(Customer customer)
+        public Purchase PurchaseCart(Customer customer)
         {
             Purchase purchase = new Purchase();
-            purchase.Products = _ctx.Entry(customer).Property(c => c.Cart).CurrentValue;
+            purchase.Products = _ctx.Entry(customer).Collection(c => c.Cart).CurrentValue;
             purchase.Customer = customer;
             purchase.DateOfPurchase = DateTime.Now;
 
             try
             {
                 _ctx.Purchases.Add(purchase);
-                return true;
+                _ctx.Entry(customer).Collection(c => c.Cart).CurrentValue.Clear();
+                return purchase;
             }
             catch
             {
-                return false;
+                return null;
             }
         }
 
         public IQueryable<Product> ViewCart(Customer customer)
         {
-            return _ctx.Entry(customer).Property(c => c.Cart).CurrentValue.AsQueryable();
+            return _ctx.Entry(customer).Collection(c => c.Cart).CurrentValue.AsQueryable();
         }
 
         public bool AddProductToCart(Product product, Customer customer)
         {
-            _ctx.Entry(customer).Property(c => c.Cart).CurrentValue.Add(product);
+            _ctx.Entry(customer).Collection(c => c.Cart).CurrentValue.Add(product);
 
             return true;
         }
 
         public bool RemoveProductFromCart(Product product, Customer customer)
         {
-            _ctx.Entry(customer).Property(c => c.Cart).CurrentValue.Remove(product);
+            _ctx.Entry(customer).Collection(c => c.Cart).CurrentValue.Remove(product);
 
             return true;
         }
@@ -71,6 +72,12 @@ namespace Dramazon2.Data
         public IQueryable<Purchase> GetAllPurchasesByCustomer(Customer customer)
         {
             return _ctx.Purchases.Where(p => p.Customer == customer).AsQueryable();
+        }
+
+        public IQueryable<Customer> GetAllCustomers()
+        {
+            return _ctx.Customers.AsQueryable();
+
         }
 
         public Customer GetCustomerById(int customerId)
@@ -81,6 +88,11 @@ namespace Dramazon2.Data
         public Customer GetCustomerByUsername(string customerUsername)
         {
             return _ctx.Customers.Where(c => c.Username == customerUsername).SingleOrDefault();
+        }
+
+        public Customer GetCustomerByEmail(string customerEmail)
+        {
+            return _ctx.Customers.Where(c => c.Email == customerEmail).SingleOrDefault();
         }
 
         public Product GetProduct(int productId)
@@ -104,9 +116,14 @@ namespace Dramazon2.Data
                 return _ctx.Products.Where(p => p.Description.Contains(productDescription)).AsQueryable();
         }
 
-        public IQueryable<Product> GetProductsByTag(Tag productTag)
+        public IQueryable<Product> GetProductsByTag(int tagId)
         {
-            return _ctx.Products.Where(p => p.Tags.Contains(productTag)).AsQueryable();
+            return _ctx.Products.Where(p => p.Tags.Any(t => t.Id == tagId)).AsQueryable();
+        }
+
+        public IQueryable<Product> GetProductsByCart(int customerId)
+        {
+            return _ctx.Customers.Where(c => c.Id == customerId).SingleOrDefault().Cart.AsQueryable();
         }
 
         public IQueryable<Product> GetProductsByTitle(string productTitle)
@@ -127,6 +144,20 @@ namespace Dramazon2.Data
         public Tag GetTagByName(string tagName)
         {
             return _ctx.Tags.Where(t => t.Name == tagName).SingleOrDefault();
+        }
+
+        public Rating Get(int customerId, int productId)
+        {
+            return _ctx.Ratings.Where(t => t.Customer.Id == customerId && t.Product.Id == productId).SingleOrDefault();
+        }
+
+        public IQueryable<Rating> GetAllRatings(int productId) {
+            return _ctx.Ratings.Where(p => p.Product.Id == productId).AsQueryable();
+        }
+
+        public IQueryable<Rating> GetAllRatingsByCustomer(int customerId)
+        {
+            return _ctx.Ratings.Where(p => p.Customer.Id == customerId).AsQueryable();
         }
 
         public bool Insert(Customer customer)
@@ -160,6 +191,19 @@ namespace Dramazon2.Data
             try
             {
                 _ctx.Tags.Add(tag);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        public bool Insert(Rating rating)
+        {
+            try
+            {
+                _ctx.Ratings.Add(rating);
                 return true;
             }
             catch

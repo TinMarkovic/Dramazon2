@@ -57,7 +57,8 @@ namespace Dramazon2.Data
                 Id = 2,
                 Title = "Game of Thrones",
                 Description = "Author: George RR Martin \n The bestselling book that started it all.",
-                Price = 19
+                Price = 19,
+                Creator = user1
             };
             prod2.Tags.Add(tag3);
             context.Products.Add(prod1);
